@@ -2,8 +2,6 @@
 
 A powerful toolkit of AppleScripts and shell scripts designed to enhance productivity on macOS. This repository includes utilities for compressing files, previewing archive contents, and creating text documents directly from the Finder.
 
-# Project Title
-
 ![Project Logo](assets/logo.png)
 
 ## Features
