@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AMApplicationBuild</key>
+	<string>526</string>
+	<key>AMApplicationVersion</key>
+	<string>2.10</string>
+	<key>AMDocumentVersion</key>
+	<string>2</string>
+	<key>actions</key>
+	<array>
+		<dict>
+			<key>action</key>
+			<dict>
+				<key>AMAccepts</key>
+				<dict>
+					<key>Container</key>
+					<string>List</string>
+					<key>Optional</key>
+					<true/>
+					<key>Types</key>
+					<array>
+						<string>com.apple.cocoa.string</string>
+					</array>
+				</dict>
+				<key>AMActionVersion</key>
+				<string>2.0.3</string>
+				<key>AMApplication</key>
+				<array>
+					<string>Automator</string>
+				</array>
+				<key>AMParameterProperties</key>
+				<dict>
+					<key>COMMAND_STRING</key>
+					<dict/>
+					<key>CheckedForUserDefaultShell</key>
+					<dict/>
+					<key>inputMethod</key>
+					<dict/>
+					<key>shell</key>
+					<dict/>
+					<key>source</key>
+					<dict/>
+				</dict>
+				<key>AMProvides</key>
+				<dict>
+					<key>Container</key>
+					<string>List</string>
+					<key>Types</key>
+					<array>
+						<string>com.apple.cocoa.string</string>
+					</array>
+				</dict>
+				<key>ActionBundlePath</key>
+				<string>/System/Library/Automator/Run Shell Script.action</string>
+				<key>ActionName</key>
+				<string>Запустить shell-скрипт</string>
+				<key>ActionParameters</key>
+				<dict>
+					<key>COMMAND_STRING</key>
+					<string># Получаем текущую папку в Finder через AppleScript
+current_folder=$(osascript &lt;&lt;EOF
+try
+    tell application "Finder"
+        if (count of windows) &gt; 0 then
+            set currentFolder to (target of front window) as alias
+            set folderName to name of (info for currentFolder)
+        else
+            set folderName to "Archive"
+        end if
+        return folderName
+    end tell
+on error
+    return "Archive"
+end try
+EOF
+)
+
+# Проверяем, что переменная current_folder получена
+if [ -z "$current_folder" ]; then
+    current_folder="Archive"
+fi
+
+result=$(osascript &lt;&lt;EOF
+try
+    set defaultName to "$current_folder"
+    set dialogResult to display dialog "Введите имя архива:" default answer defaultName with title "Создание архива" buttons {"Отменить", "Создать"} default button "Создать" with icon note
+    if button returned of dialogResult is "Отменить" then return "cancel"
+    set archiveName to text returned of dialogResult
+
+    set formats to {"zip", "rar"}
+    set chosenFormat to choose from list formats with prompt "Выберите формат архива:" default items {"zip"} with title "Формат архива"
+    if chosenFormat is false then return "cancel"
+
+    set passwordResult to display dialog "Введите пароль для архива (оставьте пустым, если пароль не нужен):" default answer "" with title "Установка пароля" buttons {"Отменить", "OK"} default button "OK" with icon note
+    if button returned of passwordResult is "Отменить" then return "cancel"
+    set archivePassword to text returned of passwordResult
+
+    return archiveName &amp; "|" &amp; (item 1 of chosenFormat) &amp; "|" &amp; archivePassword
+on error
+    return "cancel"
+end try
+EOF
+)
+
+# Если пользователь нажал "Отменить"
+if [ "$result" = "cancel" ] || [ -z "$result" ]; then
+    echo "Действие отменено пользователем."
+    exit 0
+fi
+
+# Парсим результат из AppleScript
+archive_name=$(echo "$result" | cut -d "|" -f 1)
+archive_format=$(echo "$result" | cut -d "|" -f 2)
+archive_password=$(echo "$result" | cut -d "|" -f 3)
+
+# Папка, где будет создан архив (используем директорию первого объекта)
+output_dir=$(dirname "$1")
+output_file="${output_dir}/${archive_name}.${archive_format}"
+
+# Перед созданием архива меняем права на файлы и папки
+(cd "$(dirname "$1")" &amp;&amp; \
+  find "${@##*/}" -type d -exec chmod 755 {} \; &amp;&amp; \
+  find "${@##*/}" -type f -exec chmod 644 {} \;)
+
+# Сжимаем в выбранном формате
+if [ "$archive_format" = "zip" ]; then
+    if [ -z "$archive_password" ]; then
+        # Без пароля
+        (cd "$(dirname "$1")" &amp;&amp; zip -r "$output_file" "${@##*/}" -x "*.DS_Store" -x "__MACOSX*" -x "*/__MACOSX/*" -x "*/.DS_Store")
+    else
+        # С паролем
+        (cd "$(dirname "$1")" &amp;&amp; zip -r --password "$archive_password" "$output_file" "${@##*/}" -x "*.DS_Store" -x "__MACOSX*" -x "*/__MACOSX/*" -x "*/.DS_Store")
+    fi
+elif [ "$archive_format" = "rar" ]; then
+    if [ -z "$archive_password" ]; then
+        # Без пароля
+        rar a "$output_file" "$@" &gt; /dev/null
+    else
+        # С паролем
+        rar a -p"$archive_password" "$output_file" "$@" &gt; /dev/null
+    fi
+fi
+</string>
+					<key>CheckedForUserDefaultShell</key>
+					<true/>
+					<key>inputMethod</key>
+					<integer>1</integer>
+					<key>shell</key>
+					<string>/bin/zsh</string>
+					<key>source</key>
+					<string></string>
+				</dict>
+				<key>BundleIdentifier</key>
+				<string>com.apple.RunShellScript</string>
+				<key>CFBundleVersion</key>
+				<string>2.0.3</string>
+				<key>CanShowSelectedItemsWhenRun</key>
+				<false/>
+				<key>CanShowWhenRun</key>
+				<true/>
+				<key>Category</key>
+				<array>
+					<string>AMCategoryUtilities</string>
+				</array>
+				<key>Class Name</key>
+				<string>RunShellScriptAction</string>
+				<key>InputUUID</key>
+				<string>779B0741-7CA4-457F-8E24-C9F1E8155EE5</string>
+				<key>Keywords</key>
+				<array>
+					<string>Shell</string>
+					<string>Скрипт</string>
+					<string>Команда</string>
+					<string>Запустить</string>
+					<string>Unix</string>
+				</array>
+				<key>OutputUUID</key>
+				<string>22EC8A0B-A1E7-4979-88E8-2934E0CF5D89</string>
+				<key>UUID</key>
+				<string>A380C8C3-7F06-4D9D-AA58-F908946A5E34</string>
+				<key>UnlocalizedApplications</key>
+				<array>
+					<string>Automator</string>
+				</array>
+				<key>arguments</key>
+				<dict>
+					<key>0</key>
+					<dict>
+						<key>default value</key>
+						<integer>0</integer>
+						<key>name</key>
+						<string>inputMethod</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>0</string>
+					</dict>
+					<key>1</key>
+					<dict>
+						<key>default value</key>
+						<false/>
+						<key>name</key>
+						<string>CheckedForUserDefaultShell</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>1</string>
+					</dict>
+					<key>2</key>
+					<dict>
+						<key>default value</key>
+						<string></string>
+						<key>name</key>
+						<string>source</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>2</string>
+					</dict>
+					<key>3</key>
+					<dict>
+						<key>default value</key>
+						<string></string>
+						<key>name</key>
+						<string>COMMAND_STRING</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>3</string>
+					</dict>
+					<key>4</key>
+					<dict>
+						<key>default value</key>
+						<string>/bin/sh</string>
+						<key>name</key>
+						<string>shell</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>4</string>
+					</dict>
+				</dict>
+				<key>isViewVisible</key>
+				<integer>1</integer>
+				<key>location</key>
+				<string>456.500000:633.000000</string>
+				<key>nibPath</key>
+				<string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
+			</dict>
+			<key>isViewVisible</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>connectors</key>
+	<dict/>
+	<key>workflowMetaData</key>
+	<dict>
+		<key>applicationBundleID</key>
+		<string>com.apple.finder</string>
+		<key>applicationBundleIDsByPath</key>
+		<dict>
+			<key>/System/Library/CoreServices/Finder.app</key>
+			<string>com.apple.finder</string>
+		</dict>
+		<key>applicationPath</key>
+		<string>/System/Library/CoreServices/Finder.app</string>
+		<key>applicationPaths</key>
+		<array>
+			<string>/System/Library/CoreServices/Finder.app</string>
+		</array>
+		<key>inputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject</string>
+		<key>outputTypeIdentifier</key>
+		<string>com.apple.Automator.nothing</string>
+		<key>presentationMode</key>
+		<integer>15</integer>
+		<key>processesInput</key>
+		<false/>
+		<key>serviceApplicationBundleID</key>
+		<string>com.apple.finder</string>
+		<key>serviceApplicationPath</key>
+		<string>/System/Library/CoreServices/Finder.app</string>
+		<key>serviceInputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject</string>
+		<key>serviceOutputTypeIdentifier</key>
+		<string>com.apple.Automator.nothing</string>
+		<key>serviceProcessesInput</key>
+		<false/>
+		<key>systemImageName</key>
+		<string>NSTouchBarNewFolder</string>
+		<key>useAutomaticInputType</key>
+		<false/>
+		<key>workflowTypeIdentifier</key>
+		<string>com.apple.Automator.servicesMenu</string>
+	</dict>
+</dict>
+</plist>
