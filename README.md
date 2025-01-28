@@ -26,9 +26,8 @@ A powerful toolkit of AppleScripts and shell scripts designed to enhance product
 1. Clone the repository or download the ZIP:
    
 bash
-   git clone https://github.com/Azazide/AppleScripts-Toolkit.git
+  ```git clone https://github.com/Azazide/AppleScripts-Toolkit.git
    cd AppleScripts-Toolkit
-
 
 2. Copy the required scripts to the ~/Library/Services/ directory:
    - Navigate to ~/Library/Services/ in Finder (you can access it by pressing Command + Shift + G and entering the path).
