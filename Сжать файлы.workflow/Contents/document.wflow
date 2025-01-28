@@ -89,15 +89,11 @@ try
     if button returned of dialogResult is "Отменить" then return "cancel"
     set archiveName to text returned of dialogResult
 
-    set formats to {"zip", "rar"}
-    set chosenFormat to choose from list formats with prompt "Выберите формат архива:" default items {"zip"} with title "Формат архива"
-    if chosenFormat is false then return "cancel"
-
     set passwordResult to display dialog "Введите пароль для архива (оставьте пустым, если пароль не нужен):" default answer "" with title "Установка пароля" buttons {"Отменить", "OK"} default button "OK" with icon note
     if button returned of passwordResult is "Отменить" then return "cancel"
     set archivePassword to text returned of passwordResult
 
-    return archiveName &amp; "|" &amp; (item 1 of chosenFormat) &amp; "|" &amp; archivePassword
+    return archiveName &amp; "|" &amp; archivePassword
 on error
     return "cancel"
 end try
@@ -112,37 +108,25 @@ fi
 
 # Парсим результат из AppleScript
 archive_name=$(echo "$result" | cut -d "|" -f 1)
-archive_format=$(echo "$result" | cut -d "|" -f 2)
-archive_password=$(echo "$result" | cut -d "|" -f 3)
+archive_password=$(echo "$result" | cut -d "|" -f 2)
 
 # Папка, где будет создан архив (используем директорию первого объекта)
 output_dir=$(dirname "$1")
-output_file="${output_dir}/${archive_name}.${archive_format}"
+output_file="${output_dir}/${archive_name}.zip"
 
 # Перед созданием архива меняем права на файлы и папки
 (cd "$(dirname "$1")" &amp;&amp; \
   find "${@##*/}" -type d -exec chmod 755 {} \; &amp;&amp; \
   find "${@##*/}" -type f -exec chmod 644 {} \;)
 
-# Сжимаем в выбранном формате
-if [ "$archive_format" = "zip" ]; then
-    if [ -z "$archive_password" ]; then
-        # Без пароля
-        (cd "$(dirname "$1")" &amp;&amp; zip -r "$output_file" "${@##*/}" -x "*.DS_Store" -x "__MACOSX*" -x "*/__MACOSX/*" -x "*/.DS_Store")
-    else
-        # С паролем
-        (cd "$(dirname "$1")" &amp;&amp; zip -r --password "$archive_password" "$output_file" "${@##*/}" -x "*.DS_Store" -x "__MACOSX*" -x "*/__MACOSX/*" -x "*/.DS_Store")
-    fi
-elif [ "$archive_format" = "rar" ]; then
-    if [ -z "$archive_password" ]; then
-        # Без пароля
-        rar a "$output_file" "$@" &gt; /dev/null
-    else
-        # С паролем
-        rar a -p"$archive_password" "$output_file" "$@" &gt; /dev/null
-    fi
-fi
-</string>
+# Сжимаем в формате zip
+if [ -z "$archive_password" ]; then
+    # Без пароля
+    (cd "$(dirname "$1")" &amp;&amp; zip -r "$output_file" "${@##*/}" -x "*.DS_Store" -x "__MACOSX*" -x "*/__MACOSX/*" -x "*/.DS_Store")
+else
+    # С паролем
+    (cd "$(dirname "$1")" &amp;&amp; zip -r --password "$archive_password" "$output_file" "${@##*/}" -x "*.DS_Store" -x "__MACOSX*" -x "*/__MACOSX/*" -x "*/.DS_Store")
+fi</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
 					<key>inputMethod</key>
@@ -255,7 +239,7 @@ fi
 				<key>isViewVisible</key>
 				<integer>1</integer>
 				<key>location</key>
-				<string>456.500000:633.000000</string>
+				<string>456.500000:305.000000</string>
 				<key>nibPath</key>
 				<string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
 			</dict>

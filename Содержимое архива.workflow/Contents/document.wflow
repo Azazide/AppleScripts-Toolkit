@@ -54,21 +54,38 @@
 					<string>on run {input, parameters}
     -- Проверяем, является ли файл архивом
     set archivePath to POSIX path of (item 1 of input)
-    if not (archivePath ends with ".zip" or archivePath ends with ".tar" or archivePath ends with ".tar.gz" or archivePath ends with ".tgz" or archivePath ends with ".rar") then
+    if not (archivePath ends with ".zip") then
         display dialog "Выбранный файл не является поддерживаемым архивом." buttons {"OK"} default button 1
         return input
     end if
 
     -- Создаем временную папку для распаковки
     set tempDir to (POSIX path of (do shell script "mktemp -d /tmp/archive_preview.XXXX"))
-    
-    -- Распаковываем архив
-    try
-        do shell script "unzip -q " &amp; quoted form of archivePath &amp; " -d " &amp; quoted form of tempDir &amp; " || tar -xf " &amp; quoted form of archivePath &amp; " -C " &amp; quoted form of tempDir &amp; " || unrar x " &amp; quoted form of archivePath &amp; " " &amp; quoted form of tempDir
-    on error errMsg
-        display dialog "Ошибка распаковки архива: " &amp; errMsg buttons {"OK"} default button 1
-        return input
-    end try
+
+    -- Переменная для контроля успешной распаковки
+    set extractionSuccess to false
+    set userPassword to ""
+
+    repeat while not extractionSuccess
+        try
+            -- Если пользователь ввел пароль, используем его
+            if userPassword is not "" then
+                do shell script "unzip -P " &amp; quoted form of userPassword &amp; " -q " &amp; quoted form of archivePath &amp; " -d " &amp; quoted form of tempDir
+            else
+                -- Попытка распаковки без пароля
+                do shell script "unzip -q " &amp; quoted form of archivePath &amp; " -d " &amp; quoted form of tempDir
+            end if
+            set extractionSuccess to true
+        on error errMsg
+            if errMsg contains "password" then
+                display dialog "Архив защищен паролем. Введите пароль:" default answer "" with hidden answer
+                set userPassword to text returned of the result
+            else
+                display dialog "Ошибка распаковки архива: " &amp; errMsg buttons {"OK"} default button 1
+                return input
+            end if
+        end try
+    end repeat
 
     -- Открываем временную папку в Finder
     tell application "Finder"
